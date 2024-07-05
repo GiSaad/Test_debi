@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Camera Stream</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/3.1.3/socket.io.min.js"></script>
+</head>
+<body>
+    <h1>Camera Stream</h1>
+    <video id="video" width="640" height="480" autoplay></video>
+    <script>
+        var socket = io();
+        var video = document.getElementById('video');
+
+        // Request access to the camera
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(function (stream) {
+                video.srcObject = stream;
+                video.play();
+
+                // Set up a canvas to capture frames from the video
+                var canvas = document.createElement('canvas');
+                var context = canvas.getContext('2d');
+                canvas.width = video.width;
+                canvas.height = video.height;
+
+                // Function to capture a frame and send it to the server
+                function sendFrame() {
+                    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    var frame = canvas.toDataURL('image/jpeg');
+                    socket.emit('video_frame', frame);
+                    requestAnimationFrame(sendFrame); // Keep capturing frames
+                }
+
+                // Start capturing frames
+                sendFrame();
+            })
+            .catch(function (err) {
+                console.log("Error accessing camera: " + err);
+            });
+
+        socket.on('connect', function() {
+            console.log("WebSocket connected");
+        });
+
+        socket.on('disconnect', function() {
+            console.log("WebSocket disconnected");
+            socket.close();
+        });
+    </script>
+</body>
+</html>
